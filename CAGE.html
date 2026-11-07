@@ -153,6 +153,22 @@ canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;u
 #aiCutoutPanel .aiControls .control label{font-size:11px}
 #aiCutoutPanel .aiToolNote{border-left:2px solid #4789b5;padding-left:8px;margin:8px 0;font-size:11px;color:#c9dfef;line-height:1.6}
 
+
+/* CAGE v4.8: per-pixel loupe for both eyedroppers. The loupe never alters exported PNGs. */
+.cageLoupeOptions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#102037;border:1px solid #34526d;border-radius:8px;padding:7px 9px;margin:7px 0}
+.cageLoupeOptions label{font-size:11px;color:#d6ecff;display:flex;align-items:center;gap:5px}
+.cageLoupeOptions select{color:#eaf6ff;background:#142d44;border:1px solid #50728d;border-radius:5px;padding:4px;min-height:28px;font-size:11px}
+.cageLoupeOptions input{accent-color:#69c9ee;width:15px;height:15px}
+.cageLoupeOptions .hint{width:100%;margin:0;font-size:10px}
+#cagePixelLoupe{position:fixed;top:0;left:0;z-index:99999;pointer-events:none;display:none;width:max-content;min-width:180px;max-width:260px;color:#f5fbff;font:12px/1.4 system-ui,-apple-system,'Yu Gothic',Meiryo,sans-serif;filter:drop-shadow(0 6px 18px #000b)}
+#cagePixelLoupe.show{display:flex;flex-direction:column;align-items:center;gap:5px}
+.cageLoupeBar{display:flex;gap:6px;align-items:center;background:#0e1d30;border:1px solid #82a5be;border-radius:8px;padding:5px 8px;white-space:nowrap}
+.cageLoupeBar b{font-size:12px;letter-spacing:.02em}
+.cageLoupeSwatch{width:18px;height:18px;display:inline-block;border:1px solid #a2bed5;border-radius:4px;flex:none}
+.cageLoupeCircle{border:2px solid #eefaff;border-radius:50%;overflow:hidden;background:#ffffff;box-shadow:inset 0 0 0 1px #213951,0 0 0 2px #182638;line-height:0}
+#cageLoupeCanvas{display:block;max-width:none;image-rendering:pixelated;image-rendering:crisp-edges}
+.cageLoupeCoords{border-radius:7px;padding:3px 8px;background:#10233bdd;border:1px solid #5b809b;color:#deebfa;white-space:nowrap;font-size:10px}
+
 </style>
 </head>
 <body>
@@ -213,6 +229,11 @@ canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;u
       <select id="colorSource"><option value="original">選択画像（元画像）</option><option value="composite">キャンバス合成（1920×1080）</option></select>
      </div>
      <div class="colorAnalysisActions"><button class="btn soft" id="colorPickBtn" type="button">⌖ スポイト：OFF</button><button class="btn primary" id="colorAnalyzeBtn" type="button">全色を解析</button></div>
+     <div class="cageLoupeOptions">
+      <label for="colorLoupeZoom">拡大ルーペ <select id="colorLoupeZoom"><option value="8">8倍</option><option value="12" selected>12倍</option><option value="16">16倍</option></select></label>
+      <label for="colorLoupeGrid"><input id="colorLoupeGrid" type="checkbox" checked>マス目を表示</label>
+      <div class="hint">スポイトON中はカーソル位置を拡大表示。中央の枠が取得する1ピクセルです。</div>
+     </div>
      <div class="colorPickDisplay" aria-live="polite"><div class="pickedHeader" id="colorPickHint">スポイトをONにして画像をクリック</div>
       <div class="colorPickedRow"><div class="colorSwatch"><span id="colorPickedSwatch"></span></div><div class="colorPickedMeta"><strong id="colorPickedHex">未取得</strong><div id="colorPickedRgb">RGB / 不透明度</div></div><button class="btn small" id="colorCopyPicked" type="button" disabled>コピー</button></div>
      </div>
@@ -323,7 +344,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;u
 <dialog id="cageUpdateDialog" aria-labelledby="cageUpdateHeading">
   <div class="cageUpdateHead"><h2 id="cageUpdateHeading">↻ CAGE アップデート確認</h2><button type="button" id="cageUpdateClose" aria-label="閉じる">×</button></div>
   <div class="cageUpdateBody">
-    <div class="cageUpdateVersions"><div class="cageUpdateVersion"><small>開いているHTML</small><strong>v<span id="cageLocalVersion">4.6.0</span></strong></div><div class="cageUpdateVersion"><small>GitHub公開版</small><strong id="cageRemoteVersion">未確認</strong></div></div>
+    <div class="cageUpdateVersions"><div class="cageUpdateVersion"><small>開いているHTML</small><strong>v<span id="cageLocalVersion">4.8.0</span></strong></div><div class="cageUpdateVersion"><small>GitHub公開版</small><strong id="cageRemoteVersion">未確認</strong></div></div>
     <div id="cageUpdateStatus" role="status" aria-live="polite" data-kind="idle">更新情報を確認できます。</div>
     <div class="cageUpdateNote" id="cageUpdateDetails">更新するには、初回だけWindowsに「CAGE更新リンク」を登録してください。登録後は、この画面の「アップデートする」で起動できます。</div>
     <div class="cageUpdateActions">
@@ -334,6 +355,11 @@ canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;u
     </div>
   </div>
 </dialog>
+<div id="cagePixelLoupe" aria-hidden="true">
+ <div class="cageLoupeBar"><span class="cageLoupeSwatch" id="cageLoupeSwatch"></span><b id="cageLoupeHex">#000000</b><span id="cageLoupeOpacity">100%</span></div>
+ <div class="cageLoupeCircle"><canvas id="cageLoupeCanvas" width="156" height="156"></canvas></div>
+ <div class="cageLoupeCoords" id="cageLoupeCoords">クリックで中央の色を取得</div>
+</div>
 <script>
 'use strict';
 // Original transparent PNG overlays taken from the user's DanSukuMizu_Grid17 package.
@@ -702,14 +728,14 @@ for(const key of ['L','T','R','B'])$('crop'+key).addEventListener('change',e=>ed
 canvas.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const p=toWorld(ev);if(aiBrushMode){aiBrushStart(ev,p);ev.preventDefault();return}if(colorPickMode){colorTakeSample(p);ev.preventDefault();return}let l=selected(),g=selectedGroup();
  if(g){let corner=groupHitCorner(g,p);if(corner>=0){const b=groupBounds(g);const corners=groupCorners(g);remember();drag={type:'groupResize',groupId:g.id,anchor:corners[(corner+2)%4],from:corners[corner],members:groupMembers(g).map(l=>({id:l.id,x:l.x,y:l.y,w:l.w,h:l.h}))};canvas.setPointerCapture(ev.pointerId);ev.preventDefault();return}
  if(insideBounds(g,p)){remember();drag={type:'groupMove',groupId:g.id,start:p,members:groupMembers(g).map(l=>({id:l.id,x:l.x,y:l.y}))};canvas.setPointerCapture(ev.pointerId);ev.preventDefault();return}}
- if(pickKeyMode&&l){const q=pointToLocal(l,p),sx=clamp(Math.floor((q.x+l.w/2)/l.w*l.origW),0,l.origW-1),sy=clamp(Math.floor((q.y+l.h/2)/l.h*l.origH),0,l.origH-1);const hex=sampleImageColor(l,sx,sy);if(hex){editLayer(z=>{z.keyColor=hex;z.maskMode='chroma';buildLayerMask(z)});pickKeyMode=false;refreshUI();toast('背景色 '+hex+' を選びました')}ev.preventDefault();return;}
+ if(pickKeyMode&&l){const q=pointToLocal(l,p),sx=clamp(Math.floor((q.x+l.w/2)/l.w*l.origW),0,l.origW-1),sy=clamp(Math.floor((q.y+l.h/2)/l.h*l.origH),0,l.origH-1);const hex=sampleImageColor(l,sx,sy);if(hex){editLayer(z=>{z.keyColor=hex;z.maskMode='chroma';buildLayerMask(z)});pickKeyMode=false;cageLoupeHide();refreshUI();toast('背景色 '+hex+' を選びました')}ev.preventDefault();return;}
  if(cropMode&&l&&l.visible){const k=hitCropCorner(l,p);if(k>=0){remember();drag={type:'crop',id:l.id,corner:k};canvas.setPointerCapture(ev.pointerId);ev.preventDefault();return}}
  const corner=l&&l.visible&&!cropMode?hitCorner(l,p):-1;
  if(corner>=0){remember();const opp=cornerPosition(l,(corner+2)%4);drag={type:'resize',id:l.id,corner,anchor:opp,w:l.w,h:l.h,rot:l.rotation*Math.PI/180,lock:lockRatio};canvas.setPointerCapture(ev.pointerId);ev.preventDefault();return}
  l=[...layers].reverse().find(item=>item.visible&&hitLayer(item,p));
  if(l){if(l.groupId&&!ev.altKey){selectGroup(l.groupId);g=selectedGroup();remember();drag={type:'groupMove',groupId:g.id,start:p,members:groupMembers(g).map(z=>({id:z.id,x:z.x,y:z.y}))}}else{selectedGroupId=null;selectedId=l.id;multiSelectedIds.clear();remember();drag={type:'move',id:l.id,start:p,x:l.x,y:l.y}}canvas.setPointerCapture(ev.pointerId);refreshUI();render()}
  else{selectedGroupId=null;selectedId=null;multiSelectedIds.clear();refreshUI();render()}ev.preventDefault()});
-canvas.addEventListener('pointermove',ev=>{const p=toWorld(ev);if(aiBrushLastPoint){aiBrushMove(p);ev.preventDefault();return}if(!drag){if(aiBrushMode){canvas.style.cursor='crosshair';return}if(colorPickMode){canvas.style.cursor='crosshair';return}const g=selectedGroup(),l=selected();canvas.style.cursor=g&&groupHitCorner(g,p)>=0?'nwse-resize':g&&insideBounds(g,p)?'move':cropMode&&l&&l.visible&&hitCropCorner(l,p)>=0?'crosshair':l&&l.visible&&!cropMode&&hitCorner(l,p)>=0?'nwse-resize':layers.some(layer=>layer.visible&&hitLayer(layer,p))?'move':'crosshair';return}
+canvas.addEventListener('pointermove',ev=>{const p=toWorld(ev);if(cageLoupeActive())cageLoupeDisplay(ev,p);if(aiBrushLastPoint){aiBrushMove(p);ev.preventDefault();return}if(!drag){if(aiBrushMode){canvas.style.cursor='crosshair';return}if(colorPickMode){canvas.style.cursor='crosshair';return}const g=selectedGroup(),l=selected();canvas.style.cursor=g&&groupHitCorner(g,p)>=0?'nwse-resize':g&&insideBounds(g,p)?'move':cropMode&&l&&l.visible&&hitCropCorner(l,p)>=0?'crosshair':l&&l.visible&&!cropMode&&hitCorner(l,p)>=0?'nwse-resize':layers.some(layer=>layer.visible&&hitLayer(layer,p))?'move':'crosshair';return}
  if(drag.type==='groupMove'){const dx=p.x-drag.start.x,dy=p.y-drag.start.y;for(const old of drag.members){const l=layers.find(z=>z.id===old.id);if(l){l.x=old.x+dx;l.y=old.y+dy}}render();return}
  if(drag.type==='groupResize'){const a=drag.anchor,v={x:drag.from.x-a.x,y:drag.from.y-a.y},now={x:p.x-a.x,y:p.y-a.y};const fac=clamp((now.x*v.x+now.y*v.y)/(v.x*v.x+v.y*v.y),.005,50);for(const old of drag.members){const l=layers.find(z=>z.id===old.id);if(l){const oc={x:old.x+old.w/2,y:old.y+old.h/2},nc={x:a.x+(oc.x-a.x)*fac,y:a.y+(oc.y-a.y)*fac};l.w=old.w*fac;l.h=old.h*fac;l.x=nc.x-l.w/2;l.y=nc.y-l.h/2}}render();return}
  const l=layers.find(z=>z.id===drag.id);if(!l)return;
@@ -772,6 +798,102 @@ let colorAnalysisRun=0;
 let colorDisplayedCount=0;
 let colorListCache=[];
 let colorPickedHex=null;
+
+/* v4.8 grid magnifier: original pixel samples respect rotated / cropped layers.
+   No interpolation: center square and click sample the same pixel. */
+const CAGE_LOUPE_PIXELS=13;
+const CAGE_LOUPE_RADIUS=(CAGE_LOUPE_PIXELS-1)/2;
+const cageLoupeEl=$('cagePixelLoupe');
+const cageLoupeCanvas=$('cageLoupeCanvas');
+const cageLoupeScratch=document.createElement('canvas');
+cageLoupeScratch.width=cageLoupeScratch.height=CAGE_LOUPE_PIXELS;
+const cageLoupeScratchCtx=cageLoupeScratch.getContext('2d',{willReadFrequently:true});
+let cageLoupeCompositeCache=null;
+let cageLoupePointer=null;
+function cageLoupeHide(){
+ cageLoupePointer=null;
+ cageLoupeEl.classList.remove('show');
+}
+function cageLoupeActive(){return colorPickMode||pickKeyMode}
+function cageLoupeResolve(p){
+ if((colorPickMode&&colorSourceMode==='original')||pickKeyMode){
+  const l=selected();if(!l||!l.visible)return null;
+  const q=pointToLocal(l,p),u=(q.x+l.w/2)/l.w*l.origW,v=(q.y+l.h/2)/l.h*l.origH;
+  if(!Number.isFinite(u)||!Number.isFinite(v)||u<l.cropL||v<l.cropT||u>=l.origW-l.cropR||v>=l.origH-l.cropB)return null;
+  return {source:l.img,w:l.origW,h:l.origH,x:Math.floor(u),y:Math.floor(v),minX:l.cropL,minY:l.cropT,maxX:l.origW-l.cropR,maxY:l.origH-l.cropB};
+ }
+ if(colorPickMode&&colorSourceMode==='composite'){
+  const x=Math.floor(p.x),y=Math.floor(p.y);
+  if(x<0||x>=OUT_W||y<0||y>=OUT_H)return null;
+  if(!cageLoupeCompositeCache)cageLoupeCompositeCache=colorCanvasForComposite();
+  return {source:cageLoupeCompositeCache,w:OUT_W,h:OUT_H,x,y};
+ }
+ return null;
+}
+function cageLoupePixels(hit){
+ const r=CAGE_LOUPE_RADIUS,ctx=cageLoupeScratchCtx,n=CAGE_LOUPE_PIXELS;
+ ctx.clearRect(0,0,n,n);
+ const srcX=Math.max(hit.minX??0,hit.x-r),srcY=Math.max(hit.minY??0,hit.y-r);
+ const srcRight=Math.min(hit.maxX??hit.w,hit.x+r+1),srcBottom=Math.min(hit.maxY??hit.h,hit.y+r+1);
+ const w=srcRight-srcX,h=srcBottom-srcY;
+ if(w>0&&h>0){
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(hit.source,srcX,srcY,w,h,srcX-(hit.x-r),srcY-(hit.y-r),w,h);
+ }
+ const c=ctx.getImageData(r,r,1,1).data;
+ return [c[0],c[1],c[2],c[3]];
+}
+function cageLoupeDisplay(ev,p){
+ if(!cageLoupeActive())return cageLoupeHide();
+ const hit=cageLoupeResolve(p);if(!hit)return cageLoupeHide();
+ let rgba;
+ try{rgba=cageLoupePixels(hit)}catch(err){cageLoupeHide();return}
+ const zoom=Number($('colorLoupeZoom').value)||12,n=CAGE_LOUPE_PIXELS,size=n*zoom;
+ const dc=cageLoupeCanvas;
+ if(dc.width!==size){dc.width=size;dc.height=size}
+ dc.style.width=size+'px';dc.style.height=size+'px';
+ const ctx=dc.getContext('2d');
+ // Checkerboard for pixels with transparency or outside the image.
+ ctx.fillStyle='#e7e9ed';ctx.fillRect(0,0,size,size);
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+  if((x+y)%2===0){ctx.fillStyle='#fff';ctx.fillRect(x*zoom,y*zoom,zoom,zoom)}
+ }
+ ctx.imageSmoothingEnabled=false;
+ ctx.drawImage(cageLoupeScratch,0,0,n,n,0,0,size,size);
+ if($('colorLoupeGrid').checked){
+  ctx.beginPath();ctx.lineWidth=1;ctx.strokeStyle='rgba(18,34,49,0.50)';
+  for(let i=1;i<n;i++){
+   const z=i*zoom+.5;ctx.moveTo(z,0);ctx.lineTo(z,size);ctx.moveTo(0,z);ctx.lineTo(size,z);
+  }
+  ctx.stroke();
+ }
+ // High-contrast double outline around exactly one source pixel.
+ const mid=CAGE_LOUPE_RADIUS*zoom;
+ ctx.lineWidth=3;ctx.strokeStyle='#071d30';ctx.strokeRect(mid+1.5,mid+1.5,zoom-3,zoom-3);
+ ctx.lineWidth=1.5;ctx.strokeStyle='#fff4ae';ctx.strokeRect(mid+2.5,mid+2.5,zoom-5,zoom-5);
+ const hex=colorHex(...rgba.slice(0,3));
+ $('cageLoupeSwatch').style.background=hex;
+ $('cageLoupeSwatch').style.opacity=String(rgba[3]/255);
+ $('cageLoupeHex').textContent=hex;
+ $('cageLoupeOpacity').textContent=Math.round(rgba[3]/255*100)+'%';
+ $('cageLoupeCoords').textContent=`(${hit.x}, ${hit.y})　${pickKeyMode?'背景色を選択':'クリックして色を取得'}`;
+ cageLoupeEl.classList.add('show');
+ const gap=22,vw=window.innerWidth,vh=window.innerHeight;
+ const lw=cageLoupeEl.offsetWidth,lh=cageLoupeEl.offsetHeight;
+ let x=ev.clientX+gap,y=ev.clientY-gap-lh/2;
+ if(x+lw>vw-8)x=ev.clientX-gap-lw;
+ if(x<8)x=8;
+ y=Math.max(8,Math.min(y,Math.max(8,vh-lh-8)));
+ cageLoupeEl.style.transform=`translate3d(${Math.round(x)}px,${Math.round(y)}px,0)`;
+ cageLoupePointer={ev:{clientX:ev.clientX,clientY:ev.clientY},p};
+}
+function cageLoupeUpdateIfVisible(){if(cageLoupePointer&&cageLoupeActive())cageLoupeDisplay(cageLoupePointer.ev,cageLoupePointer.p)}
+$('colorLoupeZoom').addEventListener('change',cageLoupeUpdateIfVisible);
+$('colorLoupeGrid').addEventListener('change',cageLoupeUpdateIfVisible);
+canvas.addEventListener('pointerleave',cageLoupeHide);
+canvas.addEventListener('pointercancel',cageLoupeHide);
+window.addEventListener('blur',cageLoupeHide);
+
 function colorHex(r,g,b){return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase()}
 function colorRgb(hex){return [parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)]}
 function colorPercentage(count,total){let n=count/total*100;return n>0&&n<.005?'<0.01%':n.toFixed(2)+'%'}
@@ -784,6 +906,7 @@ function colorUpdateButtons(){
  $('colorPickBtn').textContent='⌖ スポイト：'+(colorPickMode?'ON':'OFF');
  $('colorPickBtn').classList.toggle('toolActive',colorPickMode);
  if(colorPickMode)canvas.style.cursor='crosshair';
+ if(!cageLoupeActive())cageLoupeHide();
 }
 function colorClear(reason='画像を選択して「全色を解析」を押してください。'){
  colorAnalysisRun++;
@@ -806,6 +929,7 @@ function colorSyncTarget(){
  colorUpdateButtons();
 }
 function colorInvalidateComposite(){
+ cageLoupeCompositeCache=null;
  if(colorSourceMode==='composite'&&colorAnalysisData){
   colorClear('キャンバスが変更されました。もう一度解析してください。');
  }
@@ -834,21 +958,13 @@ function colorCanvasForComposite(){
  return t;
 }
 function colorTakeSample(p){
- if(colorSourceMode==='original'){
-  const l=selected();if(!l){toast('画像レイヤーを選択してください');return}
-  const q=pointToLocal(l,p),u=(q.x+l.w/2)/l.w*l.origW,v=(q.y+l.h/2)/l.h*l.origH;
-  if(u<l.cropL||v<l.cropT||u>=l.origW-l.cropR||v>=l.origH-l.cropB){toast('選択中の画像の表示範囲をクリックしてください');return}
-  const sx=Math.floor(u),sy=Math.floor(v);
-  const c=document.createElement('canvas');c.width=c.height=1;
-  const cx=c.getContext('2d',{willReadFrequently:true});cx.drawImage(l.img,sx,sy,1,1,0,0,1,1);
-  const d=cx.getImageData(0,0,1,1).data;
-  colorSelectPicked(d[0],d[1],d[2],d[3],sx,sy);
- }else{
-  const x=Math.floor(p.x),y=Math.floor(p.y);if(x<0||y<0||x>=OUT_W||y>=OUT_H)return;
-  const composite=colorCanvasForComposite();const d=composite.getContext('2d').getImageData(x,y,1,1).data;
-  colorSelectPicked(d[0],d[1],d[2],d[3],x,y);
- }
- colorPickMode=false;colorUpdateButtons();
+ const hit=cageLoupeResolve(p);
+ if(!hit){toast('画像の表示範囲内をクリックしてください');return}
+ try{
+  const rgba=cageLoupePixels(hit);
+  colorSelectPicked(rgba[0],rgba[1],rgba[2],rgba[3],hit.x,hit.y);
+  colorPickMode=false;cageLoupeHide();colorUpdateButtons();
+ }catch(e){cageLoupeHide();toast('色の取得に失敗しました：'+e.message)}
 }
 function colorPrepareData(){
  if(colorSourceMode==='original'){
@@ -948,7 +1064,7 @@ $('colorSource').addEventListener('change',e=>{
 });
 $('colorPickBtn').addEventListener('click',()=>{
  colorPickMode=!colorPickMode;
- if(colorPickMode){cropMode=false;pickKeyMode=false;refreshUI();$('colorAnalysisPanel').open=true;toast('キャンバス上の色を取得する場所をクリックしてください')}
+ if(colorPickMode){cropMode=false;pickKeyMode=false;refreshUI();$('colorAnalysisPanel').open=true;toast('カーソル位置を拡大表示します。中央の1マスをクリックして色を取得してください')}
  colorUpdateButtons();
 });
 $('colorAnalyzeBtn').addEventListener('click',colorAnalyze);
@@ -1175,16 +1291,16 @@ $('aiSaveCutoutBtn').addEventListener('click',()=>{
 aiRefreshControls(selected());
 /* === End v4.7 background removal === */
 
-window.addEventListener('keydown',ev=>{const tag=ev.target.tagName.toLowerCase();if(['input','textarea','select'].includes(tag))return;const ctrl=ev.ctrlKey||ev.metaKey;if(ctrl&&ev.key.toLowerCase()==='z'){ev.preventDefault();ev.shiftKey?redo():undo();return}if(ctrl&&ev.key.toLowerCase()==='y'){ev.preventDefault();redo();return}if(ctrl&&ev.key.toLowerCase()==='g'){ev.preventDefault();ev.shiftKey?ungroup():makeGroup();return}if(ev.key==='Escape'){colorPickMode=false;colorUpdateButtons();cropMode=false;pickKeyMode=false;multiSelectedIds.clear();selectedGroupId=null;refreshUI();render();return}const g=selectedGroup();if(g){if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(ev.key)){ev.preventDefault();const d=ev.shiftKey?10:1;groupAction(g,z=>moveGroup(z,ev.key==='ArrowRight'?d:ev.key==='ArrowLeft'?-d:0,ev.key==='ArrowDown'?d:ev.key==='ArrowUp'?-d:0))}return}const l=selected();if(!l)return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(ev.key)){ev.preventDefault();const step=ev.shiftKey?10:1;remember();if(ev.key==='ArrowUp')l.y-=step;if(ev.key==='ArrowDown')l.y+=step;if(ev.key==='ArrowLeft')l.x-=step;if(ev.key==='ArrowRight')l.x+=step;quickUpdate()}if(ev.key==='Delete'||ev.key==='Backspace'){$('layerDelete').click()}});
+window.addEventListener('keydown',ev=>{const tag=ev.target.tagName.toLowerCase();if(['input','textarea','select'].includes(tag))return;const ctrl=ev.ctrlKey||ev.metaKey;if(ctrl&&ev.key.toLowerCase()==='z'){ev.preventDefault();ev.shiftKey?redo():undo();return}if(ctrl&&ev.key.toLowerCase()==='y'){ev.preventDefault();redo();return}if(ctrl&&ev.key.toLowerCase()==='g'){ev.preventDefault();ev.shiftKey?ungroup():makeGroup();return}if(ev.key==='Escape'){colorPickMode=false;cageLoupeHide();colorUpdateButtons();cropMode=false;pickKeyMode=false;multiSelectedIds.clear();selectedGroupId=null;refreshUI();render();return}const g=selectedGroup();if(g){if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(ev.key)){ev.preventDefault();const d=ev.shiftKey?10:1;groupAction(g,z=>moveGroup(z,ev.key==='ArrowRight'?d:ev.key==='ArrowLeft'?-d:0,ev.key==='ArrowDown'?d:ev.key==='ArrowUp'?-d:0))}return}const l=selected();if(!l)return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(ev.key)){ev.preventDefault();const step=ev.shiftKey?10:1;remember();if(ev.key==='ArrowUp')l.y-=step;if(ev.key==='ArrowDown')l.y+=step;if(ev.key==='ArrowLeft')l.x-=step;if(ev.key==='ArrowRight')l.x+=step;quickUpdate()}if(ev.key==='Delete'||ev.key==='Backspace'){$('layerDelete').click()}});
 for(let i=0;i<GRID_ASSETS.length;i++){const opt=document.createElement('option');opt.value=i;opt.textContent=String(i+1).padStart(2,'0')+' · '+GRID_ASSETS[i].name;$('gridSelect').append(opt)}
 for(const g of gridImages){g.onload=render;g.onerror=()=>console.warn('grid could not be loaded')}
 $('bgMode').value=bgMode;$('bgColor').value=bgColor;$('bgColorRow').style.display=bgMode==='custom'?'block':'none';refreshGridColorUI();refreshBackgroundDefaultUI();refreshUI();gridChange();render();
 </script>
 <script>
 'use strict';
-/* CAGE v4.7.0: checks GitHub metadata; invokes locally registered updater only after explicit click. */
+/* CAGE v4.8.0: checks GitHub metadata; invokes locally registered updater only after explicit click. */
 (()=>{
- const LOCAL_VERSION='4.7.0';
+ const LOCAL_VERSION='4.8.0';
  const BASE='https://raw.githubusercontent.com/x0227ca-png/cage-updates/main/';
  const API='https://api.github.com/repos/x0227ca-png/cage-updates/contents/update.json?ref=main';
  const $id=id=>document.getElementById(id);
