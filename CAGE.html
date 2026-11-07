@@ -133,6 +133,26 @@ canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;u
 .colorAnalysisBody input[type="search"]{width:100%;min-height:35px;background:#0f1b2b;color:#f0f7ff;border:1px solid #49627b;border-radius:7px;padding:7px 9px;box-sizing:border-box}
 .colorAnalysisBody input[type="search"]:focus-visible{outline:2px solid #68b4ff}
 .colorAnalysisNote{font-size:10px;color:#9fb6cc;line-height:1.6;margin-top:7px}
+
+/* CAGE v4.7: image-preserving AI cutout and retouching */
+#aiCutoutPanel{background:#14253a;border:1px solid #3c627e;border-radius:11px;padding:13px 11px;margin:13px 0}
+#aiCutoutPanel .aiHeading{font-weight:800;font-size:13px;color:#e3f4ff;display:flex;align-items:center;justify-content:space-between;gap:8px}
+#aiCutoutPanel .aiStatus{font-size:11px;color:#b4d4ed;line-height:1.6;overflow-wrap:anywhere;margin:9px 0}
+#aiCutoutPanel .aiStatus[data-state="error"]{color:#ffbbb2}
+#aiCutoutPanel .aiStatus[data-state="good"]{color:#a9efd2}
+#aiCutoutPanel .aiActions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+#aiCutoutPanel .aiActions .btn{white-space:normal;flex:1 1 100px;min-width:0}
+#aiCutoutPanel .aiBrushRow{display:flex;gap:7px;flex-wrap:wrap}
+#aiCutoutPanel .aiBrushRow .btn{flex:1 1 85px;white-space:normal;padding:7px 5px;min-width:0}
+#aiCutoutPanel .aiBrushRow .btn.active{background:#466334;border-color:#9ade7a}
+#aiCutoutPanel .aiNote{font-size:10px;color:#a4c1d9;line-height:1.7;margin-top:9px}
+#aiCutoutPanel progress{width:100%;accent-color:#60baff;height:8px;display:none}
+#aiCutoutPanel progress.show{display:block}
+#aiCutoutPanel .aiControls{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#aiCutoutPanel .aiControls .control{min-width:0;margin:10px 0 4px}
+#aiCutoutPanel .aiControls .control label{font-size:11px}
+#aiCutoutPanel .aiToolNote{border-left:2px solid #4789b5;padding-left:8px;margin:8px 0;font-size:11px;color:#c9dfef;line-height:1.6}
+
 </style>
 </head>
 <body>
@@ -229,7 +249,29 @@ canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;u
    <div class="control"><label>倍率（読み込み時基準） <span class="stat" id="scaleLabel">100%</span></label><input id="scaleRange" type="range" min="1" max="400" value="100"></div>
    <div class="controlsRow"><button class="btn small" id="fitContain">全体を収める</button><button class="btn small" id="fitCover">画面を埋める</button><button class="btn small" id="originalSize">元の大きさ</button></div>
    <div class="sep"></div>
-   <div class="sectiontitle">背景を消す <span class="helpBadge">v4.2</span></div>
+
+   <div id="aiCutoutPanel">
+     <div class="aiHeading">✨ AI背景削除 <span class="helpBadge">v4.7</span></div>
+     <div class="aiNote">被写体の形をAIが推定し、元画像のピクセルを残したまま背景を透明化します。選択中の画像レイヤーだけに適用されます。</div>
+     <div class="aiActions">
+       <button class="btn primary" id="aiRemoveBgBtn" type="button">✨ AIで背景を削除</button>
+       <button class="btn" id="aiCutoutResetBtn" type="button">↶ 透過を解除</button>
+     </div>
+     <div id="aiCutoutStatus" class="aiStatus" role="status" aria-live="polite">AIは初回のみモデル（約42MB）をダウンロードします。画像はサーバーへ送信しません。</div>
+     <progress id="aiCutoutProgress" max="100" value="0" aria-label="モデルの読み込み進捗"></progress>
+     <div class="aiControls">
+       <div class="control"><label for="aiEdgeFeather">輪郭ぼかし <span class="stat" id="aiFeatherLabel">0px</span></label><input type="range" id="aiEdgeFeather" min="0" max="6" step="1" value="0"></div>
+       <div class="control"><label for="aiEdgeShrink">輪郭を内側へ <span class="stat" id="aiShrinkLabel">0px</span></label><input type="range" id="aiEdgeShrink" min="0" max="4" step="1" value="0"></div>
+     </div>
+     <div class="sectiontitle" style="margin:12px 0 6px">手動修正ブラシ</div>
+     <div class="aiBrushRow"><button class="btn small" id="aiEraseBrushBtn" type="button">🖌 消す</button><button class="btn small" id="aiRestoreBrushBtn" type="button">↶ 復元</button><button class="btn small" id="aiBrushOffBtn" type="button">終了</button></div>
+     <div class="control"><label for="aiBrushSize">ブラシ直径（元画像px） <span class="stat" id="aiBrushSizeLabel">30</span></label><input type="range" id="aiBrushSize" min="2" max="180" step="2" value="30"></div>
+     <div class="aiToolNote">ブラシONの状態で画像上をドラッグ。消し過ぎた輪郭は「復元」で戻せます。Ctrl+Zで直前のブラシ操作を取り消せます。</div>
+     <div class="aiActions"><button class="btn small" id="aiSaveCutoutBtn" type="button">↓ 選択画像を透過PNGで保存</button></div>
+     <div class="aiNote">画像編集・レイヤー位置変更・トリミングは従来どおり利用できます。AI処理は端末内で実行。初回はネット接続が必要です（使用モデル：Apache-2.0）。</div>
+   </div>
+
+    <div class="sectiontitle">従来の背景削除 <span class="helpBadge">色判定</span></div>
    <div class="controlsRow"><button class="btn primary" id="autoRemoveBgBtn" title="選択した画像から自動で背景を除去します">✂ 背景を消す（自動）</button><button class="btn" id="restoreBgBtn" title="元画像に戻します">↶ 元に戻す</button></div>
    <div class="hint" style="margin-top:10px">画像の周辺と被写体の色を判定し、背景を透明にします。輪郭付近の色のにじみも軽減します。複雑な背景では「指定した背景色を透過」を使って調整してください。</div>
    <div class="control" style="margin-top:12px"><label>透過部分の表示確認</label><button class="btn small" id="transparencyPreviewBtn">市松模様で確認：OFF</button></div>
@@ -241,6 +283,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;u
       <option value="none">背景を消さない（元画像のまま）</option>
       <option value="auto">背景を自動削除（新機能）</option>
       <option value="chroma">指定した背景色を透過</option>
+       <option value="ai">AIマスク / 手動修正を使用</option>
      </select>
    </div>
    <div id="keySettings" class="inset">
@@ -249,7 +292,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;u
       <div class="control"><label>透過する色の幅 <span id="keyToleranceLabel" class="stat">50</span></label><input type="range" id="keyTolerance" min="0" max="200" value="50"></div>
       <div class="control"><label>境界のぼかし <span id="keySoftnessLabel" class="stat">26</span></label><input type="range" id="keySoftness" min="0" max="100" value="26"></div>
    </div>
-   <div class="modeNote">操作：① 対象の画像を選択 → ②「背景を消す（自動）」を押す → ③ 市松模様で透過を確認。背景の色が残る場合は「指定した背景色を透過」と色の幅を調整してください。<br>※ 背景削除は非破壊。プロジェクト保存・読み込みでも状態を維持します。</div>
+    <div class="modeNote">操作：① 対象の画像を選択 → ②「AIで背景を削除」を押す → ③ 市松模様で確認・ブラシ修正。従来の色推定方式も引き続き利用可能です。背景の色が残る場合は「指定した背景色を透過」と色の幅を調整してください。<br>※ 背景削除は非破壊。プロジェクト保存・読み込みでも状態を維持します。</div>
    <div class="sep"></div>
    <div class="sectiontitle">トリミング <span class="helpBadge">NEW</span></div>
    <div class="controlsRow"><button class="btn soft" id="cropToolBtn">✂ 画面上でトリミング</button><button class="btn" id="cropResetBtn">切り抜きを解除</button></div>
@@ -298,6 +341,7 @@ const GRID_ASSETS=[{"name":"big ender 9","detail":"17列 × 9行","filename":"01
 const OUT_W=1920,OUT_H=1080,VIEW_SCALE=.5;
 let checkerPreview=false;
 let cropMode=false,pickKeyMode=false;
+let aiBrushMode=null,aiBrushLastPoint=null,aiRunning=false,aiModelInstance=null;
 const $=id=>document.getElementById(id);
 const canvas=$('stage'),ctx=canvas.getContext('2d');
 function readCageBackgroundPreference(){
@@ -328,7 +372,7 @@ function toast(message){const e=$('toast');e.textContent=message;e.style.display
 function loadImage(src){return new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=()=>reject(Error('画像の読み込みに失敗しました'));i.src=src})}
 function readDataURL(f){return new Promise((resolve,reject)=>{const rd=new FileReader();rd.onload=()=>resolve(rd.result);rd.onerror=()=>reject(Error('読み込みに失敗しました'));rd.readAsDataURL(f)})}
 function initialRect(im,mode='contain') {const factor=mode==='cover'?Math.max(OUT_W/im.naturalWidth,OUT_H/im.naturalHeight):Math.min(OUT_W*.88/im.naturalWidth,OUT_H*.88/im.naturalHeight,1);const w=im.naturalWidth*factor,h=im.naturalHeight*factor;return{x:(OUT_W-w)/2,y:(OUT_H-h)/2,w,h}}
-function makeLayer(im,src,name,offset=0){const p=initialRect(im);return{id:idSeq++,img:im,src,name,origW:im.naturalWidth,origH:im.naturalHeight,initialW:p.w,initialH:p.h,x:p.x+offset,y:p.y+offset,w:p.w,h:p.h,rotation:0,opacity:1,visible:true,blendMode:'source-over',maskMode:'none',keyColor:'#d8cec2',keyTolerance:50,keySoftness:26,cropL:0,cropT:0,cropR:0,cropB:0,processed:null,maskPixels:null}}
+function makeLayer(im,src,name,offset=0){const p=initialRect(im);return{id:idSeq++,img:im,src,name,origW:im.naturalWidth,origH:im.naturalHeight,initialW:p.w,initialH:p.h,x:p.x+offset,y:p.y+offset,w:p.w,h:p.h,rotation:0,opacity:1,visible:true,blendMode:'source-over',maskMode:'none',keyColor:'#d8cec2',keyTolerance:50,keySoftness:26,cropL:0,cropT:0,cropR:0,cropB:0,processed:null,maskPixels:null,cutoutMask:null,aiFeather:0,aiShrink:0}}
 async function addFiles(fileList){const files=[...fileList].filter(f=>f.type.startsWith('image/'));if(!files.length){toast('画像ファイルを選択してください');return}try{const newLayers=[];for(const f of files){const src=await readDataURL(f);const im=await loadImage(src);newLayers.push(makeLayer(im,src,f.name,newLayers.length*18))}remember();layers.push(...newLayers);selectedId=newLayers[newLayers.length-1].id;selectedGroupId=null;multiSelectedIds.clear();refreshUI();render();toast(`${newLayers.length}枚の画像を追加しました`)}catch(e){alert('画像を読み込めませんでした：'+e.message)}}
 function toWorld(ev){const rect=canvas.getBoundingClientRect();return{x:(ev.clientX-rect.left)/rect.width*OUT_W,y:(ev.clientY-rect.top)/rect.height*OUT_H}}
 function rot(x,y,a){const c=Math.cos(a),s=Math.sin(a);return{x:c*x-s*y,y:s*x+c*y}}
@@ -488,7 +532,7 @@ function refreshLayerList(){
 }
 function setInput(id,v){$(id).value=String(r(v))}
 function syncFields(){const l=selected();if(!l)return;for(const [id,v] of [['posX',l.x],['posY',l.y],['sizeW',l.w],['sizeH',l.h],['rotation',l.rotation]])setInput(id,v);$('scaleRange').value=clamp(Math.round(l.w/l.initialW*100),1,400);$('scaleLabel').textContent=Math.round(l.w/l.initialW*100)+'%';$('layerAlpha').value=Math.round(l.opacity*100);$('layerAlphaLabel').textContent=Math.round(l.opacity*100)+'%';$('layerVisible').checked=l.visible;
- $('blendMode').value=l.blendMode||'source-over';$('maskMode').value=l.maskMode||'none';$('keyColor').value=l.keyColor||'#d8cec2';$('keyTolerance').value=l.keyTolerance??50;$('keySoftness').value=l.keySoftness??26;$('keyToleranceLabel').textContent=l.keyTolerance??50;$('keySoftnessLabel').textContent=l.keySoftness??26;
+ $('blendMode').value=l.blendMode||'source-over';$('maskMode').value=l.maskMode||'none';aiRefreshControls(l);$('keyColor').value=l.keyColor||'#d8cec2';$('keyTolerance').value=l.keyTolerance??50;$('keySoftness').value=l.keySoftness??26;$('keyToleranceLabel').textContent=l.keyTolerance??50;$('keySoftnessLabel').textContent=l.keySoftness??26;
  $('keySettings').style.display=l.maskMode==='chroma'?'block':'none';
  $('transparencyPreviewBtn').textContent='市松模様で確認：'+(checkerPreview?'ON':'OFF');
  $('transparencyPreviewBtn').classList.toggle('toolActive',checkerPreview);
@@ -498,7 +542,7 @@ function syncFields(){const l=selected();if(!l)return;for(const [id,v] of [['pos
  $('eyedropBtn').classList.toggle('toolActive',pickKeyMode);
 }
 function refreshUI(){
- const g=selectedGroup(),l=selected();$('selectedTag').textContent=g?'グループ':multiSelectedIds.size>=2?multiSelectedIds.size+'枚':l?'1枚':'未選択';$('noSelection').style.display=(l||g)?'none':'block';if(!l){cropMode=false;pickKeyMode=false}
+ const g=selectedGroup(),l=selected();$('selectedTag').textContent=g?'グループ':multiSelectedIds.size>=2?multiSelectedIds.size+'枚':l?'1枚':'未選択';$('noSelection').style.display=(l||g)?'none':'block';if(!l){cropMode=false;pickKeyMode=false;aiBrushMode=null}
  $('editorPanel').style.display=l?'block':'none';$('groupPanel').style.display=g?'block':'none';
  if(l){$('selectedName').textContent=`${l.name} ／ 元画像 ${l.origW} × ${l.origH}`;syncFields()}
  if(g){const b=groupBounds(g);$('groupName').value=g.name;$('groupInfo').textContent=`${groupMembers(g).length}枚のレイヤーを一括操作`;for(const [field,v] of [['groupX',b?.x||0],['groupY',b?.y||0],['groupW',b?.w||0],['groupH',b?.h||0]])$(field).value=Math.round(v);$('groupRotation').value=groupAngle}
@@ -575,6 +619,14 @@ function buildLayerMask(l){
  const c=t.getContext('2d',{willReadFrequently:true});c.drawImage(l.img,0,0,w,h);
  let im;try{im=c.getImageData(0,0,w,h)}catch(e){console.warn('Cannot process image',e);return}
  const px=im.data,total=w*h,alpha=new Uint8Array(total);
+ if(reqMode==='ai'){
+   if(!(l.cutoutMask instanceof Uint8Array)||l.cutoutMask.length!==total){l.maskMode='none';return}
+   const mask=aiEdgeAdjustedMask(l.cutoutMask,w,h,Number(l.aiFeather||0),Number(l.aiShrink||0));
+   for(let j=0;j<total;j++){
+     const i=j*4,a=mask[j];alpha[j]=Math.round(px[i+3]*a/255);px[i+3]=alpha[j];
+   }
+   c.putImageData(im,0,0);l.processed=t;l.maskPixels=alpha;return;
+ }
  let mode=reqMode;
  if(reqMode==='auto'){
   let redCount=0,blackCount=0,samples=0;
@@ -626,19 +678,19 @@ function buildLayerMask(l){
  c.putImageData(im,0,0);l.processed=t;l.maskPixels=alpha;
 }
 $('autoRemoveBgBtn').addEventListener('click',()=>{if(!selected()){toast('先に画像レイヤーを選択してください');return}editLayer(l=>{l.maskMode='auto';buildLayerMask(l)});toast('背景を消しました（'+({red:'赤シルエット',black:'黒シルエット',adaptive:'背景推定'}[selected()?.detectedBgMode]||'自動')+'）')});
-$('restoreBgBtn').addEventListener('click',()=>{if(!selected())return;editLayer(l=>{l.maskMode='none';l.detectedBgMode=null;buildLayerMask(l)});toast('元の背景を表示しました')});
+$('restoreBgBtn').addEventListener('click',()=>{if(!selected())return;editLayer(l=>{l.maskMode='none';l.cutoutMask=null;l.detectedBgMode=null;aiBrushMode=null;buildLayerMask(l)});toast('元の背景を表示しました')});
 $('transparencyPreviewBtn').addEventListener('click',()=>{checkerPreview=!checkerPreview;refreshUI();render()});
 $('blendMode').addEventListener('change',e=>editLayer(l=>l.blendMode=e.target.value));
-$('maskMode').addEventListener('change',e=>editLayer(l=>{l.maskMode=e.target.value;buildLayerMask(l)}));
+$('maskMode').addEventListener('change',e=>{const l=selected();if(e.target.value==='ai'&&!l?.cutoutMask){toast('先にAI背景削除か手動ブラシを使用してください');refreshUI();return}editLayer(l=>{l.maskMode=e.target.value;buildLayerMask(l)})});
 $('keyColor').addEventListener('change',e=>editLayer(l=>{l.keyColor=e.target.value;buildLayerMask(l)}));
 for(const [id,field,label] of [['keyTolerance','keyTolerance','keyToleranceLabel'],['keySoftness','keySoftness','keySoftnessLabel']]){
  $(id).addEventListener('pointerdown',()=>{if(selected())remember()});
  $(id).addEventListener('input',e=>{const l=selected();if(!l)return;l[field]=Number(e.target.value);$(label).textContent=e.target.value;buildLayerMask(l);render()});
  $(id).addEventListener('change',()=>refreshUI());
 }
-$('eyedropBtn').addEventListener('click',()=>{if(!selected())return;colorPickMode=false;pickKeyMode=!pickKeyMode;if(pickKeyMode)cropMode=false;refreshUI();toast(pickKeyMode?'画像上の消したい背景色をクリックしてください':'スポイトを終了しました')});
+$('eyedropBtn').addEventListener('click',()=>{if(!selected())return;colorPickMode=false;aiBrushMode=null;pickKeyMode=!pickKeyMode;if(pickKeyMode)cropMode=false;refreshUI();toast(pickKeyMode?'画像上の消したい背景色をクリックしてください':'スポイトを終了しました')});
 $('guessBgBtn').addEventListener('click',()=>editLayer(l=>{l.keyColor=autoKeyColor(l);l.maskMode='chroma';buildLayerMask(l)}));
-$('cropToolBtn').addEventListener('click',()=>{if(!selected())return;colorPickMode=false;cropMode=!cropMode;if(cropMode)pickKeyMode=false;refreshUI();render();toast(cropMode?'オレンジ色の四隅を動かして切り抜きできます':'通常の移動・拡縮モードに戻りました')});
+$('cropToolBtn').addEventListener('click',()=>{if(!selected())return;colorPickMode=false;aiBrushMode=null;cropMode=!cropMode;if(cropMode)pickKeyMode=false;refreshUI();render();toast(cropMode?'オレンジ色の四隅を動かして切り抜きできます':'通常の移動・拡縮モードに戻りました')});
 $('cropResetBtn').addEventListener('click',()=>editLayer(l=>{l.cropL=l.cropT=l.cropR=l.cropB=0}));
 for(const key of ['L','T','R','B'])$('crop'+key).addEventListener('change',e=>editLayer(l=>{
  const val=Math.max(0,Math.round(Number(e.target.value)||0)),op={L:'R',R:'L',T:'B',B:'T'}[key];
@@ -647,7 +699,7 @@ for(const key of ['L','T','R','B'])$('crop'+key).addEventListener('change',e=>ed
 }));
 
 // Pointer interactions: move a layer or resize at each of its four corners.
-canvas.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const p=toWorld(ev);if(colorPickMode){colorTakeSample(p);ev.preventDefault();return}let l=selected(),g=selectedGroup();
+canvas.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const p=toWorld(ev);if(aiBrushMode){aiBrushStart(ev,p);ev.preventDefault();return}if(colorPickMode){colorTakeSample(p);ev.preventDefault();return}let l=selected(),g=selectedGroup();
  if(g){let corner=groupHitCorner(g,p);if(corner>=0){const b=groupBounds(g);const corners=groupCorners(g);remember();drag={type:'groupResize',groupId:g.id,anchor:corners[(corner+2)%4],from:corners[corner],members:groupMembers(g).map(l=>({id:l.id,x:l.x,y:l.y,w:l.w,h:l.h}))};canvas.setPointerCapture(ev.pointerId);ev.preventDefault();return}
  if(insideBounds(g,p)){remember();drag={type:'groupMove',groupId:g.id,start:p,members:groupMembers(g).map(l=>({id:l.id,x:l.x,y:l.y}))};canvas.setPointerCapture(ev.pointerId);ev.preventDefault();return}}
  if(pickKeyMode&&l){const q=pointToLocal(l,p),sx=clamp(Math.floor((q.x+l.w/2)/l.w*l.origW),0,l.origW-1),sy=clamp(Math.floor((q.y+l.h/2)/l.h*l.origH),0,l.origH-1);const hex=sampleImageColor(l,sx,sy);if(hex){editLayer(z=>{z.keyColor=hex;z.maskMode='chroma';buildLayerMask(z)});pickKeyMode=false;refreshUI();toast('背景色 '+hex+' を選びました')}ev.preventDefault();return;}
@@ -657,12 +709,12 @@ canvas.addEventListener('pointerdown',ev=>{if(ev.button!==0)return;const p=toWor
  l=[...layers].reverse().find(item=>item.visible&&hitLayer(item,p));
  if(l){if(l.groupId&&!ev.altKey){selectGroup(l.groupId);g=selectedGroup();remember();drag={type:'groupMove',groupId:g.id,start:p,members:groupMembers(g).map(z=>({id:z.id,x:z.x,y:z.y}))}}else{selectedGroupId=null;selectedId=l.id;multiSelectedIds.clear();remember();drag={type:'move',id:l.id,start:p,x:l.x,y:l.y}}canvas.setPointerCapture(ev.pointerId);refreshUI();render()}
  else{selectedGroupId=null;selectedId=null;multiSelectedIds.clear();refreshUI();render()}ev.preventDefault()});
-canvas.addEventListener('pointermove',ev=>{const p=toWorld(ev);if(!drag){if(colorPickMode){canvas.style.cursor='crosshair';return}const g=selectedGroup(),l=selected();canvas.style.cursor=g&&groupHitCorner(g,p)>=0?'nwse-resize':g&&insideBounds(g,p)?'move':cropMode&&l&&l.visible&&hitCropCorner(l,p)>=0?'crosshair':l&&l.visible&&!cropMode&&hitCorner(l,p)>=0?'nwse-resize':layers.some(layer=>layer.visible&&hitLayer(layer,p))?'move':'crosshair';return}
+canvas.addEventListener('pointermove',ev=>{const p=toWorld(ev);if(aiBrushLastPoint){aiBrushMove(p);ev.preventDefault();return}if(!drag){if(aiBrushMode){canvas.style.cursor='crosshair';return}if(colorPickMode){canvas.style.cursor='crosshair';return}const g=selectedGroup(),l=selected();canvas.style.cursor=g&&groupHitCorner(g,p)>=0?'nwse-resize':g&&insideBounds(g,p)?'move':cropMode&&l&&l.visible&&hitCropCorner(l,p)>=0?'crosshair':l&&l.visible&&!cropMode&&hitCorner(l,p)>=0?'nwse-resize':layers.some(layer=>layer.visible&&hitLayer(layer,p))?'move':'crosshair';return}
  if(drag.type==='groupMove'){const dx=p.x-drag.start.x,dy=p.y-drag.start.y;for(const old of drag.members){const l=layers.find(z=>z.id===old.id);if(l){l.x=old.x+dx;l.y=old.y+dy}}render();return}
  if(drag.type==='groupResize'){const a=drag.anchor,v={x:drag.from.x-a.x,y:drag.from.y-a.y},now={x:p.x-a.x,y:p.y-a.y};const fac=clamp((now.x*v.x+now.y*v.y)/(v.x*v.x+v.y*v.y),.005,50);for(const old of drag.members){const l=layers.find(z=>z.id===old.id);if(l){const oc={x:old.x+old.w/2,y:old.y+old.h/2},nc={x:a.x+(oc.x-a.x)*fac,y:a.y+(oc.y-a.y)*fac};l.w=old.w*fac;l.h=old.h*fac;l.x=nc.x-l.w/2;l.y=nc.y-l.h/2}}render();return}
  const l=layers.find(z=>z.id===drag.id);if(!l)return;
  if(drag.type==='move'){l.x=drag.x+p.x-drag.start.x;l.y=drag.y+p.y-drag.start.y}else if(drag.type==='crop'){const q=pointToLocal(l,p),ix=clamp(Math.round((q.x+l.w/2)/l.w*l.origW),0,l.origW),iy=clamp(Math.round((q.y+l.h/2)/l.h*l.origH),0,l.origH);const k=drag.corner;if(k===0||k===3)l.cropL=clamp(ix,0,l.origW-l.cropR-2);else l.cropR=clamp(l.origW-ix,0,l.origW-l.cropL-2);if(k===0||k===1)l.cropT=clamp(iy,0,l.origH-l.cropB-2);else l.cropB=clamp(l.origH-iy,0,l.origH-l.cropT-2)}else{const sx=[-1,1,1,-1][drag.corner],sy=[-1,-1,1,1][drag.corner],q=rot(p.x-drag.anchor.x,p.y-drag.anchor.y,-drag.rot);let w,h;if(drag.lock){const ratio=clamp((q.x*sx*drag.w+q.y*sy*drag.h)/(drag.w*drag.w+drag.h*drag.h),.015,40);w=Math.max(1,drag.w*ratio);h=Math.max(1,drag.h*ratio)}else{w=Math.max(1,q.x*sx);h=Math.max(1,q.y*sy)}const delta=rot(sx*w/2,sy*h/2,drag.rot);const cx=drag.anchor.x+delta.x,cy=drag.anchor.y+delta.y;l.x=cx-w/2;l.y=cy-h/2;l.w=w;l.h=h}quickUpdate();ev.preventDefault()});
-function stopDrag(){if(drag){drag=null;refreshUI()}}
+function stopDrag(){if(aiBrushLastPoint){aiBrushLastPoint=null;aiRefreshControls(selected())}if(drag){drag=null;refreshUI()}}
 canvas.addEventListener('pointerup',stopDrag);canvas.addEventListener('pointercancel',stopDrag);window.addEventListener('blur',stopDrag);
 canvas.addEventListener('wheel',ev=>{const g=selectedGroup();if(g){ev.preventDefault();remember();const fac=clamp(Math.exp(-ev.deltaY*.00115),.7,1.4);scaleGroup(g,fac,toWorld(ev));refreshUI();render();return}const l=selected();if(!l||!l.visible)return;ev.preventDefault();remember();const p=toWorld(ev),factor=clamp(Math.exp(-ev.deltaY*.00115),.7,1.4),old=layerCenter(l),nw=clamp(l.w*factor,1,30000),nh=clamp(l.h*factor,1,30000),actual=nw/l.w,newCenter={x:p.x+(old.x-p.x)*actual,y:p.y+(old.y-p.y)*actual};l.w=nw;l.h=nh;l.x=newCenter.x-nw/2;l.y=newCenter.y-nh/2;quickUpdate()},{passive:false});
 function changeField(field,value){const l=selected(),n=Number(value);if(!l||!Number.isFinite(n))return;remember();if(field==='w'||field==='h'){const oldW=l.w,oldH=l.h;const v=clamp(n,1,30000);if(field==='w'){l.w=v;if(lockRatio)l.h=oldH*(v/oldW)}else{l.h=v;if(lockRatio)l.w=oldW*(v/oldH)}}else if(field==='opacity')l.opacity=clamp(n/100,0,1);else if(field==='rotation')l.rotation=n;else l[field]=n;refreshUI();render()}
@@ -707,10 +759,10 @@ $('undoBtn').addEventListener('click',undo);$('redoBtn').addEventListener('click
 $('dropZone').addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'});$('dropZone').addEventListener('drop',async e=>{e.preventDefault();await addFiles(e.dataTransfer.files)});
 function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
 $('exportBtn').addEventListener('click',()=>{const output=document.createElement('canvas');output.width=OUT_W;output.height=OUT_H;paint(output.getContext('2d'),true);output.toBlob(blob=>{if(!blob){alert('PNG出力に失敗しました');return}downloadBlob(blob,'CAGE_image_1920x1080.png');toast('1920×1080のPNGを保存しました')},'image/png')});
-$('saveProjectBtn').addEventListener('click',()=>{const project={format:'DanSukuGridImageEditor',version:5,width:OUT_W,height:OUT_H,gridIndex,gridVisible,gridOpacity,includeGridInExport,gridTintEnabled,gridLineColor,bgMode,bgColor,groups:groups.map(g=>({id:g.id,name:g.name,layerIds:g.layerIds,visibleBeforeHide:g.visibleBeforeHide??null})),layers:layers.map(({id,name,src,x,y,w,h,rotation,opacity,visible,initialW,initialH,blendMode,maskMode,keyColor,keyTolerance,keySoftness,cropL,cropT,cropR,cropB,groupId})=>({id,name,src,x,y,w,h,rotation,opacity,visible,initialW,initialH,blendMode,maskMode,keyColor,keyTolerance,keySoftness,cropL,cropT,cropR,cropB,groupId}))};const blob=new Blob([JSON.stringify(project,null,2)],{type:'application/json'});downloadBlob(blob,'CAGE_edit_project.json');toast('編集プロジェクトを保存しました')});
+$('saveProjectBtn').addEventListener('click',()=>{const project={format:'DanSukuGridImageEditor',version:5,width:OUT_W,height:OUT_H,gridIndex,gridVisible,gridOpacity,includeGridInExport,gridTintEnabled,gridLineColor,bgMode,bgColor,groups:groups.map(g=>({id:g.id,name:g.name,layerIds:g.layerIds,visibleBeforeHide:g.visibleBeforeHide??null})),layers:layers.map(({id,name,src,x,y,w,h,rotation,opacity,visible,initialW,initialH,blendMode,maskMode,keyColor,keyTolerance,keySoftness,cropL,cropT,cropR,cropB,groupId,cutoutMask,aiFeather,aiShrink,origW,origH})=>({id,name,src,x,y,w,h,rotation,opacity,visible,initialW,initialH,blendMode,maskMode,keyColor,keyTolerance,keySoftness,cropL,cropT,cropR,cropB,groupId,aiFeather,aiShrink,cutoutMaskPng:cutoutMask?aiMaskToDataURL(cutoutMask,origW,origH):null}))};const blob=new Blob([JSON.stringify(project,null,2)],{type:'application/json'});downloadBlob(blob,'CAGE_edit_project.json');toast('編集プロジェクトを保存しました')});
 $('openProjectBtn').addEventListener('click',()=>$('projectInput').click());
-$('projectInput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(data.format!=='DanSukuGridImageEditor'||!Array.isArray(data.layers)||data.layers.length>100)throw Error('対応していない編集データです');const restored=[],importMap=new Map();for(const item of data.layers){if(typeof item.src!=='string'||!item.src.startsWith('data:image/'))throw Error('画像データに問題があります');const im=await loadImage(item.src);const w=Number(item.w),h=Number(item.h);if(!Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0)throw Error('画像サイズが不正です');restored.push({...makeLayer(im,item.src,String(item.name||'画像')),x:Number(item.x)||0,y:Number(item.y)||0,w,h,initialW:Number(item.initialW)||w,initialH:Number(item.initialH)||h,rotation:Number(item.rotation)||0,opacity:clamp(Number(item.opacity),0,1),visible:item.visible!==false,blendMode:['source-over','multiply','screen','overlay','darken','lighten'].includes(item.blendMode)?item.blendMode:'source-over',maskMode:(item.maskMode==='red'||item.maskMode==='black')?'auto':(['none','auto','chroma'].includes(item.maskMode)?item.maskMode:'none'),keyColor:/^#[0-9a-f]{6}$/i.test(item.keyColor)?item.keyColor:'#d8cec2',keyTolerance:clamp(Number(item.keyTolerance??50),0,200),keySoftness:clamp(Number(item.keySoftness??26),0,100),cropL:0,cropT:0,cropR:0,cropB:0,processed:null,maskPixels:null});const rl=restored[restored.length-1];importMap.set(item.id,rl.id);const lft=clamp(Number(item.cropL)||0,0,im.naturalWidth-2),rgt=clamp(Number(item.cropR)||0,0,im.naturalWidth-lft-2),top=clamp(Number(item.cropT)||0,0,im.naturalHeight-2),bot=clamp(Number(item.cropB)||0,0,im.naturalHeight-top-2);Object.assign(rl,{cropL:lft,cropR:rgt,cropT:top,cropB:bot});buildLayerMask(rl)}remember();layers=restored;groups=[];for(const old of (data.groups||[])){const ids=(old.layerIds||[]).map(id=>importMap.get(id)).filter(Boolean);if(ids.length){const id=groupSeq++;groups.push({id,name:String(old.name||'グループ '+id),layerIds:ids,visibleBeforeHide:Array.isArray(old.visibleBeforeHide)?old.visibleBeforeHide.map(oldId=>importMap.get(oldId)).filter(Boolean):null});for(const l of layers)if(ids.includes(l.id))l.groupId=id}}selectedGroupId=groups.length===1?groups[0].id:null;multiSelectedIds.clear();selectedId=selectedGroupId?null:(layers.length?layers[layers.length-1].id:null);groupAngle=0;gridIndex=clamp(Math.floor(Number(data.gridIndex)||0),0,16);gridVisible=data.gridVisible!==false;gridOpacity=clamp(Number(data.gridOpacity??.85),0,1);includeGridInExport=!!data.includeGridInExport;bgMode=['black','white','transparent','custom'].includes(data.bgMode)?data.bgMode:'white';bgColor=/^#[0-9a-f]{6}$/i.test(data.bgColor)?data.bgColor:'#ffffff';$('gridSelect').value=gridIndex;$('gridVisible').checked=gridVisible;$('gridAlpha').value=Math.round(gridOpacity*100);$('gridAlphaLabel').textContent=Math.round(gridOpacity*100)+'%';$('gridExport').checked=includeGridInExport;$('gridDetail').textContent=GRID_ASSETS[gridIndex].detail;$('bgMode').value=bgMode;$('bgColor').value=bgColor;$('bgColorRow').style.display=bgMode==='custom'?'block':'none';gridTintEnabled=data.gridTintEnabled===true;gridLineColor=/^#[0-9a-f]{6}$/i.test(data.gridLineColor)?data.gridLineColor:'#16b8ff';gridTintCache.canvas=null;refreshGridColorUI();refreshBackgroundDefaultUI();refreshUI();render();toast('編集プロジェクトを読み込みました')}catch(err){alert('読み込みに失敗しました：'+err.message)}finally{e.target.value=''}});
-/* CAGE v4.6 — Pixel accurate image color inspector and palette analyzer.
+$('projectInput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(data.format!=='DanSukuGridImageEditor'||!Array.isArray(data.layers)||data.layers.length>100)throw Error('対応していない編集データです');const restored=[],importMap=new Map();for(const item of data.layers){if(typeof item.src!=='string'||!item.src.startsWith('data:image/'))throw Error('画像データに問題があります');const im=await loadImage(item.src);const w=Number(item.w),h=Number(item.h);if(!Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0)throw Error('画像サイズが不正です');restored.push({...makeLayer(im,item.src,String(item.name||'画像')),x:Number(item.x)||0,y:Number(item.y)||0,w,h,initialW:Number(item.initialW)||w,initialH:Number(item.initialH)||h,rotation:Number(item.rotation)||0,opacity:clamp(Number(item.opacity),0,1),visible:item.visible!==false,blendMode:['source-over','multiply','screen','overlay','darken','lighten'].includes(item.blendMode)?item.blendMode:'source-over',maskMode:(item.maskMode==='red'||item.maskMode==='black')?'auto':(['none','auto','chroma','ai'].includes(item.maskMode)?item.maskMode:'none'),keyColor:/^#[0-9a-f]{6}$/i.test(item.keyColor)?item.keyColor:'#d8cec2',keyTolerance:clamp(Number(item.keyTolerance??50),0,200),keySoftness:clamp(Number(item.keySoftness??26),0,100),aiFeather:clamp(Number(item.aiFeather??0),0,6),aiShrink:clamp(Number(item.aiShrink??0),0,4),cropL:0,cropT:0,cropR:0,cropB:0,processed:null,maskPixels:null});const rl=restored[restored.length-1];importMap.set(item.id,rl.id);const lft=clamp(Number(item.cropL)||0,0,im.naturalWidth-2),rgt=clamp(Number(item.cropR)||0,0,im.naturalWidth-lft-2),top=clamp(Number(item.cropT)||0,0,im.naturalHeight-2),bot=clamp(Number(item.cropB)||0,0,im.naturalHeight-top-2);Object.assign(rl,{cropL:lft,cropR:rgt,cropT:top,cropB:bot});if(typeof item.cutoutMaskPng==='string'&&item.cutoutMaskPng.startsWith('data:image/png;base64,'))rl.cutoutMask=await aiMaskFromURL(item.cutoutMaskPng,rl.origW,rl.origH);if(rl.maskMode==='ai'&&!rl.cutoutMask)rl.maskMode='none';buildLayerMask(rl)}remember();layers=restored;groups=[];for(const old of (data.groups||[])){const ids=(old.layerIds||[]).map(id=>importMap.get(id)).filter(Boolean);if(ids.length){const id=groupSeq++;groups.push({id,name:String(old.name||'グループ '+id),layerIds:ids,visibleBeforeHide:Array.isArray(old.visibleBeforeHide)?old.visibleBeforeHide.map(oldId=>importMap.get(oldId)).filter(Boolean):null});for(const l of layers)if(ids.includes(l.id))l.groupId=id}}selectedGroupId=groups.length===1?groups[0].id:null;multiSelectedIds.clear();selectedId=selectedGroupId?null:(layers.length?layers[layers.length-1].id:null);groupAngle=0;gridIndex=clamp(Math.floor(Number(data.gridIndex)||0),0,16);gridVisible=data.gridVisible!==false;gridOpacity=clamp(Number(data.gridOpacity??.85),0,1);includeGridInExport=!!data.includeGridInExport;bgMode=['black','white','transparent','custom'].includes(data.bgMode)?data.bgMode:'white';bgColor=/^#[0-9a-f]{6}$/i.test(data.bgColor)?data.bgColor:'#ffffff';$('gridSelect').value=gridIndex;$('gridVisible').checked=gridVisible;$('gridAlpha').value=Math.round(gridOpacity*100);$('gridAlphaLabel').textContent=Math.round(gridOpacity*100)+'%';$('gridExport').checked=includeGridInExport;$('gridDetail').textContent=GRID_ASSETS[gridIndex].detail;$('bgMode').value=bgMode;$('bgColor').value=bgColor;$('bgColorRow').style.display=bgMode==='custom'?'block':'none';gridTintEnabled=data.gridTintEnabled===true;gridLineColor=/^#[0-9a-f]{6}$/i.test(data.gridLineColor)?data.gridLineColor:'#16b8ff';gridTintCache.canvas=null;refreshGridColorUI();refreshBackgroundDefaultUI();refreshUI();render();toast('編集プロジェクトを読み込みました')}catch(err){alert('読み込みに失敗しました：'+err.message)}finally{e.target.value=''}});
+/* CAGE v4.7 — Pixel accurate image color inspector and palette analyzer.
    The analysis never uploads image data. All processing remains local. */
 let colorPickMode=false;
 let colorSourceMode='original';
@@ -926,6 +978,203 @@ $('colorCsvExport').addEventListener('click',()=>{
 colorTargetId=selectedId;
 colorUpdateButtons();
 
+
+/* === CAGE v4.7 — locally executed AI subject segmentation and mask retouch === */
+function aiSetStatus(message,state='idle'){
+ const el=$('aiCutoutStatus');el.textContent=message;el.dataset.state=state;
+}
+function aiRefreshControls(l){
+ if(!$('aiCutoutPanel'))return;
+ const ready=!!l;
+ for(const id of ['aiRemoveBgBtn','aiCutoutResetBtn','aiEraseBrushBtn','aiRestoreBrushBtn','aiBrushOffBtn','aiSaveCutoutBtn'])$(id).disabled=!ready||aiRunning;
+ $('aiRemoveBgBtn').disabled=!ready||aiRunning;
+ $('aiCutoutResetBtn').disabled=!ready||!l?.cutoutMask||aiRunning;
+ $('aiBrushSizeLabel').textContent=$('aiBrushSize').value;
+ $('aiEdgeFeather').value=l?.aiFeather??0;$('aiFeatherLabel').textContent=(l?.aiFeather??0)+'px';
+ $('aiEdgeShrink').value=l?.aiShrink??0;$('aiShrinkLabel').textContent=(l?.aiShrink??0)+'px';
+ for(const [id,mode] of [['aiEraseBrushBtn','erase'],['aiRestoreBrushBtn','restore']])$(id).classList.toggle('active',aiBrushMode===mode&&ready);
+ if(aiBrushMode&&ready)canvas.style.cursor='crosshair';
+}
+// Efficient integral-image box blur. This changes the mask, never the original image.
+function aiBoxBlur(src,w,h,radius){
+ radius=Math.round(radius);if(!radius)return src;
+ const hor=new Uint8Array(w*h),out=new Uint8Array(w*h),span=radius*2+1;
+ for(let y=0;y<h;y++){
+  const off=y*w;let sum=0;for(let k=-radius;k<=radius;k++)sum+=src[off+clamp(k,0,w-1)];
+  for(let x=0;x<w;x++){hor[off+x]=Math.round(sum/span);sum+=src[off+clamp(x+radius+1,0,w-1)]-src[off+clamp(x-radius,0,w-1)];}
+ }
+ for(let x=0;x<w;x++){
+  let sum=0;for(let k=-radius;k<=radius;k++)sum+=hor[clamp(k,0,h-1)*w+x];
+  for(let y=0;y<h;y++){out[y*w+x]=Math.round(sum/span);sum+=hor[clamp(y+radius+1,0,h-1)*w+x]-hor[clamp(y-radius,0,h-1)*w+x];}
+ }
+ return out;
+}
+function aiEdgeAdjustedMask(src,w,h,feather,shrink){
+ let mask=src;
+ if(shrink>0){
+   // Soft erosion: inspect nearby alpha, subtract at soft borders without removing fine tips outright.
+   const r=Math.round(shrink),res=new Uint8Array(src.length);
+   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+     const i=y*w+x;let m=src[i];
+     for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+       if(dx*dx+dy*dy>r*r)continue;
+       const xx=clamp(x+dx,0,w-1),yy=clamp(y+dy,0,h-1);m=Math.min(m,src[yy*w+xx]);
+     }
+     res[i]=m;
+   }
+   mask=res;
+ }
+ if(feather>0)mask=aiBoxBlur(mask,w,h,feather);
+ return mask;
+}
+function aiMaskToDataURL(mask,w,h){
+ const c=document.createElement('canvas');c.width=w;c.height=h;
+ const ctx=c.getContext('2d',{willReadFrequently:true}),im=ctx.createImageData(w,h);
+ for(let i=0;i<mask.length;i++){const j=i*4;im.data[j]=255;im.data[j+1]=255;im.data[j+2]=255;im.data[j+3]=mask[i]}
+ ctx.putImageData(im,0,0);return c.toDataURL('image/png');
+}
+async function aiMaskFromURL(dataUrl,w,h){
+ const im=await loadImage(dataUrl);if(im.naturalWidth!==w||im.naturalHeight!==h)throw Error('背景マスクの画像サイズが一致しません');
+ const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(im,0,0);
+ const data=ctx.getImageData(0,0,w,h).data,mask=new Uint8Array(w*h);
+ for(let i=0;i<mask.length;i++)mask[i]=data[i*4+3];return mask;
+}
+function aiBrushLocalPoint(l,world){
+ const p=pointToLocal(l,world),x=(p.x+l.w/2)/l.w*l.origW,y=(p.y+l.h/2)/l.h*l.origH;
+ if(!Number.isFinite(x+y)||x<0||x>=l.origW||y<0||y>=l.origH)return null;
+ return {x,y};
+}
+function aiBrushAt(l,pt){
+ if(!pt||!l.cutoutMask)return;
+ const w=l.origW,h=l.origH,rad=Number($('aiBrushSize').value)/2;
+ const x0=Math.max(0,Math.floor(pt.x-rad)),x1=Math.min(w-1,Math.ceil(pt.x+rad)),y0=Math.max(0,Math.floor(pt.y-rad)),y1=Math.min(h-1,Math.ceil(pt.y+rad));
+ const goal=aiBrushMode==='restore'?255:0;
+ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+   const d=Math.hypot(x+.5-pt.x,y+.5-pt.y),v=clamp((rad-d)/Math.max(1,rad*.22),0,1);
+   if(v<=0)continue;const i=y*w+x;l.cutoutMask[i]=Math.round(l.cutoutMask[i]*(1-v)+goal*v);
+ }
+}
+function aiBrushSegment(l,a,b){
+ const dist=Math.hypot(b.x-a.x,b.y-a.y),steps=clamp(Math.ceil(dist/Math.max(1,Number($('aiBrushSize').value)/5)),1,300);
+ for(let i=1;i<=steps;i++)aiBrushAt(l,{x:a.x+(b.x-a.x)*i/steps,y:a.y+(b.y-a.y)*i/steps});
+ buildLayerMask(l);render();
+}
+function aiBrushStart(ev,p){
+ const l=selected();if(!l||aiRunning)return;
+ const at=aiBrushLocalPoint(l,p);if(!at)return;
+ remember();
+ if(!(l.cutoutMask instanceof Uint8Array)){
+  const imCanvas=document.createElement('canvas');imCanvas.width=l.origW;imCanvas.height=l.origH;
+  const ctx=imCanvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(l.processed||l.img,0,0);
+  const px=ctx.getImageData(0,0,l.origW,l.origH).data;
+  l.cutoutMask=new Uint8Array(l.origW*l.origH);
+  for(let i=0;i<l.cutoutMask.length;i++)l.cutoutMask[i]=px[i*4+3];
+ }else l.cutoutMask=l.cutoutMask.slice(); // immutable snapshots for undo/redo
+ l.maskMode='ai';cropMode=false;pickKeyMode=false;colorPickMode=false;
+ aiBrushAt(l,at);buildLayerMask(l);render();aiBrushLastPoint={id:l.id,point:at};
+ canvas.setPointerCapture(ev.pointerId);refreshUI();
+}
+function aiBrushMove(p){
+ if(!aiBrushLastPoint)return;
+ const l=layers.find(z=>z.id===aiBrushLastPoint.id);
+ if(!l)return;
+ const at=aiBrushLocalPoint(l,p);if(!at)return;
+ aiBrushSegment(l,aiBrushLastPoint.point,at);aiBrushLastPoint.point=at;
+}
+function aiRawToMask(raw,w,h){
+ if(!raw||!raw.width||!raw.height)throw Error('AIがマスク画像を返しませんでした');
+ const cv=document.createElement('canvas');cv.width=raw.width;cv.height=raw.height;
+ const ctx=cv.getContext('2d',{willReadFrequently:true});
+ let im;
+ if(typeof raw.toCanvas==='function'){
+   ctx.drawImage(raw.toCanvas(),0,0);im=ctx.getImageData(0,0,cv.width,cv.height);
+ }else if(raw.data&&raw.channels){
+   im=ctx.createImageData(raw.width,raw.height);
+   for(let i=0;i<raw.width*raw.height;i++){
+     const j=i*4,k=i*raw.channels;
+     im.data[j]=raw.data[k];im.data[j+1]=raw.data[k+Math.min(1,raw.channels-1)];im.data[j+2]=raw.data[k+Math.min(2,raw.channels-1)];
+     im.data[j+3]=raw.channels>=4?raw.data[k+3]:255;
+   }
+   ctx.putImageData(im,0,0);
+ }else throw Error('AIマスクの形式が不正です');
+ // On RGBA foreground, alpha carries the cutout. With grayscale model output, luminance carries it.
+ let minA=255,maxA=0;
+ for(let i=3;i<im.data.length;i+=4){const a=im.data[i];if(a<minA)minA=a;if(a>maxA)maxA=a}
+ const useAlpha=maxA-minA>16;
+ const mono=document.createElement('canvas');mono.width=cv.width;mono.height=cv.height;
+ const mc=mono.getContext('2d',{willReadFrequently:true});const output=mc.createImageData(mono.width,mono.height);
+ for(let i=0;i<im.data.length;i+=4){
+   const a=useAlpha?im.data[i+3]:Math.round((im.data[i]+im.data[i+1]+im.data[i+2])/3);
+   output.data[i]=output.data[i+1]=output.data[i+2]=255;output.data[i+3]=a;
+ }
+ mc.putImageData(output,0,0);
+ const full=document.createElement('canvas');full.width=w;full.height=h;
+ const fc=full.getContext('2d',{willReadFrequently:true});fc.imageSmoothingEnabled=true;fc.imageSmoothingQuality='high';fc.drawImage(mono,0,0,w,h);
+ const data=fc.getImageData(0,0,w,h).data,mask=new Uint8Array(w*h);
+ for(let i=0;i<mask.length;i++)mask[i]=data[i*4+3];
+ return mask;
+}
+async function aiLoadModel(){
+ if(aiModelInstance)return aiModelInstance;
+ aiSetStatus('背景削除ライブラリを読み込んでいます…');
+ const {pipeline}=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.2');
+ aiSetStatus('ORMBGモデルを読み込み中。初回は約42MBのダウンロードが必要です…');
+ aiModelInstance=await pipeline('background-removal','onnx-community/ormbg-ONNX',{
+   device:'wasm',dtype:'uint8',
+   progress_callback:p=>{
+     if(!p)return;
+     const label=typeof p.file==='string'?p.file.split('/').pop():p.status;
+     if(Number.isFinite(p.progress)){
+       $('aiCutoutProgress').classList.add('show');$('aiCutoutProgress').value=clamp(p.progress,0,100);
+       aiSetStatus('モデルの取得：'+Math.round(p.progress)+'%（'+label+'）');
+     }else if(p.status)aiSetStatus('AI準備：'+p.status+(label&&label!==p.status?' '+label:''));
+   }
+ });
+ return aiModelInstance;
+}
+async function aiRunRemove(){
+ const l=selected();if(!l||aiRunning)return;
+ const originalId=l.id;aiRunning=true;aiBrushMode=null;aiRefreshControls(l);
+ const progress=$('aiCutoutProgress');let url=null;
+ try{
+   const pipe=await aiLoadModel();
+   aiSetStatus('AIが被写体と背景を解析しています…');
+   const response=await fetch(l.src);const blob=await response.blob();url=URL.createObjectURL(blob);
+   const output=await pipe([url]);
+   const raw=Array.isArray(output)?output[0]:output;
+   const mask=aiRawToMask(raw,l.origW,l.origH);
+   if(!layers.some(z=>z.id===originalId))throw Error('処理中に画像レイヤーが削除されました');
+   remember();l.cutoutMask=mask;l.maskMode='ai';l.aiFeather=Number($('aiEdgeFeather').value)||0;l.aiShrink=Number($('aiEdgeShrink').value)||0;
+   buildLayerMask(l);checkerPreview=true;
+   refreshUI();render();aiSetStatus('背景削除が完了しました。髪・服の境界は消す／復元ブラシで調整できます。','good');
+   toast('AI背景削除が完了しました');
+ }catch(e){console.error('CAGE AI background removal',e);aiSetStatus('AI処理に失敗：'+(e?.message||e)+'。ネット接続・ブラウザのWebAssembly対応を確認してください。従来の色指定透過とブラシは使用できます。','error')}
+ finally{if(url)URL.revokeObjectURL(url);aiRunning=false;progress.classList.remove('show');aiRefreshControls(selected())}
+}
+$('aiRemoveBgBtn').addEventListener('click',aiRunRemove);
+$('aiCutoutResetBtn').addEventListener('click',()=>{
+ if(!selected()||aiRunning)return;
+ editLayer(l=>{l.cutoutMask=null;l.maskMode='none';l.aiFeather=0;l.aiShrink=0;buildLayerMask(l)});
+ aiBrushMode=null;aiSetStatus('背景削除を解除しました。元の画像は変更されていません。','good');refreshUI();
+});
+for(const [id,mode] of [['aiEraseBrushBtn','erase'],['aiRestoreBrushBtn','restore']]){
+ $(id).addEventListener('click',()=>{if(!selected()||aiRunning)return;aiBrushMode=aiBrushMode===mode?null:mode;colorPickMode=false;pickKeyMode=false;cropMode=false;refreshUI();aiRefreshControls(selected());toast(aiBrushMode?'ドラッグで「'+(mode==='erase'?'消去':'復元')+'」できます':'ブラシを終了しました')});
+}
+$('aiBrushOffBtn').addEventListener('click',()=>{aiBrushMode=null;aiRefreshControls(selected());toast('ブラシを終了しました')});
+$('aiBrushSize').addEventListener('input',()=>aiRefreshControls(selected()));
+for(const [id,key] of [['aiEdgeFeather','aiFeather'],['aiEdgeShrink','aiShrink']]){
+ $(id).addEventListener('pointerdown',()=>{if(selected()?.cutoutMask)remember()});
+ $(id).addEventListener('input',e=>{const l=selected();if(!l||!l.cutoutMask)return;l[key]=Number(e.target.value);l.maskMode='ai';buildLayerMask(l);aiRefreshControls(l);render()});
+}
+$('aiSaveCutoutBtn').addEventListener('click',()=>{
+ const l=selected();if(!l)return;
+ const cut=l.processed||l.img;
+ const c=document.createElement('canvas');c.width=l.origW;c.height=l.origH;c.getContext('2d').drawImage(cut,0,0);
+ c.toBlob(blob=>{if(blob)downloadBlob(blob,'CAGE_cutout_'+String(l.name).replace(/\.[^.]+$/,'').replace(/[^\w\-\u3040-\u30ff\u4e00-\u9fff]/g,'_').slice(0,48)+'.png');else toast('PNGに変換できませんでした')},'image/png');
+});
+aiRefreshControls(selected());
+/* === End v4.7 background removal === */
+
 window.addEventListener('keydown',ev=>{const tag=ev.target.tagName.toLowerCase();if(['input','textarea','select'].includes(tag))return;const ctrl=ev.ctrlKey||ev.metaKey;if(ctrl&&ev.key.toLowerCase()==='z'){ev.preventDefault();ev.shiftKey?redo():undo();return}if(ctrl&&ev.key.toLowerCase()==='y'){ev.preventDefault();redo();return}if(ctrl&&ev.key.toLowerCase()==='g'){ev.preventDefault();ev.shiftKey?ungroup():makeGroup();return}if(ev.key==='Escape'){colorPickMode=false;colorUpdateButtons();cropMode=false;pickKeyMode=false;multiSelectedIds.clear();selectedGroupId=null;refreshUI();render();return}const g=selectedGroup();if(g){if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(ev.key)){ev.preventDefault();const d=ev.shiftKey?10:1;groupAction(g,z=>moveGroup(z,ev.key==='ArrowRight'?d:ev.key==='ArrowLeft'?-d:0,ev.key==='ArrowDown'?d:ev.key==='ArrowUp'?-d:0))}return}const l=selected();if(!l)return;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(ev.key)){ev.preventDefault();const step=ev.shiftKey?10:1;remember();if(ev.key==='ArrowUp')l.y-=step;if(ev.key==='ArrowDown')l.y+=step;if(ev.key==='ArrowLeft')l.x-=step;if(ev.key==='ArrowRight')l.x+=step;quickUpdate()}if(ev.key==='Delete'||ev.key==='Backspace'){$('layerDelete').click()}});
 for(let i=0;i<GRID_ASSETS.length;i++){const opt=document.createElement('option');opt.value=i;opt.textContent=String(i+1).padStart(2,'0')+' · '+GRID_ASSETS[i].name;$('gridSelect').append(opt)}
 for(const g of gridImages){g.onload=render;g.onerror=()=>console.warn('grid could not be loaded')}
@@ -933,9 +1182,9 @@ $('bgMode').value=bgMode;$('bgColor').value=bgColor;$('bgColorRow').style.displa
 </script>
 <script>
 'use strict';
-/* CAGE v4.6.0: checks GitHub metadata; invokes locally registered updater only after explicit click. */
+/* CAGE v4.7.0: checks GitHub metadata; invokes locally registered updater only after explicit click. */
 (()=>{
- const LOCAL_VERSION='4.6.0';
+ const LOCAL_VERSION='4.7.0';
  const BASE='https://raw.githubusercontent.com/x0227ca-png/cage-updates/main/';
  const API='https://api.github.com/repos/x0227ca-png/cage-updates/contents/update.json?ref=main';
  const $id=id=>document.getElementById(id);
